@@ -1,0 +1,3 @@
+# Packages installed into the Astro image (on top of Astro Runtime)
+pymongo
+requests

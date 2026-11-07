@@ -1,0 +1,46 @@
+# Astro CLI automatically merges this file with its own docker-compose file
+# when you run `astro dev start`.
+services:
+  mongo:
+    image: mongo:7
+    container_name: currency_mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db            # persistent storage
+    networks:
+      - airflow                        # Astro's network: Airflow reaches Mongo as host "mongo"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      meta.networking: "network 'airflow' (bridge); reachable by service name 'mongo' on port 27017"
+      meta.persistent_storage: "named volume 'mongo_data' mounted at /data/db"
+
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: currency_mongo_express
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://admin:password@mongo:27017/?authSource=admin
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    ports:
+      - "8081:8081"
+    networks:
+      - airflow
+    labels:
+      meta.networking: "network 'airflow' (bridge); talks to MongoDB at mongo:27017"
+      meta.persistent_storage: "stateless; all data lives in the 'mongo_data' volume of the mongo service"
+
+volumes:
+  mongo_data:
